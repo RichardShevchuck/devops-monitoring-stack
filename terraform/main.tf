@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.0"
+    }
   }
 }
 
@@ -27,4 +31,13 @@ module "ec2" {
 module "security_groups" {
   source = "./modules/security-groups"
   vpc_id = module.vpc.vpc_id
+}
+
+
+resource "local_file" "ansible_inventory" {
+  content  = <<-EOT
+[monitoring]
+${module.ec2.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+    EOT
+  filename = "../ansible/inventory.ini"
 }

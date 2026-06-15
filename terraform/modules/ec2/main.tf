@@ -7,7 +7,7 @@ resource "aws_instance" "web" {
   }
 
   vpc_security_group_ids = [var.security_group_id]
-  key_name               = var.key_name
+  key_name               = aws_key_pair.default.key_name
 }
 
 data "aws_ami" "ubuntu" {
@@ -18,4 +18,14 @@ data "aws_ami" "ubuntu" {
   }
 
   owners = ["099720109477"] # Canonical
+}
+
+resource "aws_key_pair" "default" {
+  key_name   = var.key_name
+  public_key = file(var.key_name)
+}
+
+
+resource "aws_eip" "web_eip" {
+  instance = aws_instance.web.id
 }
