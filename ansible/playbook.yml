@@ -1,41 +1,14 @@
 - name: Ansible Playbook
   hosts: all
   become: true
+  
+ 
+  
+  roles:
+    - docker
+    - monitoring
 
-  tasks:
-    - name: Update apt and install dependencies
-      ansible.builtin.apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
-          - gnupg
-          - python3-pip
-        state: present
-        update_cache: true
 
-    - name: Add official Docker GPG key
-      ansible.builtin.apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
 
-    - name: Add Docker APT repository
-      ansible.builtin.apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
-        state: present
 
-    - name: Install Docker Engine
-      ansible.builtin.apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-        state: present
-        update_cache: true
-
-    - name: Install Docker Compose
-      ansible.builtin.get_url:
-        url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
-        dest: /usr/local/bin/docker-compose
-        mode: '0755'
+  
