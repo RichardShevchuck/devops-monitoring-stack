@@ -1,81 +1,71 @@
-# DevOps Project 07 — AWS Monitoring Stack
+# DevOps Monitoring Stack
 
-Prometheus + Grafana + Alertmanager monitoring stack deployed on AWS EC2. Infrastructure provisioned with Terraform, configuration managed with Ansible.
-
-## Architecture
-
-```
-Internet
-    │
-    ▼
-┌─────────────────────────────────┐
-│  VPC (10.0.0.0/16)              │
-│  Subnet 10.0.1.0/24             │
-│                                 │
-│  ┌──────────────────────────┐   │
-│  │  EC2 t3.micro (Ubuntu)   │   │
-│  │                          │   │
-│  │  ┌────────────────────┐  │   │
-│  │  │  Docker Compose    │  │   │
-│  │  │  ├── Prometheus    │  │   │
-│  │  │  ├── Grafana       │  │   │
-│  │  │  ├── Alertmanager  │  │   │
-│  │  │  └── Node Exporter │  │   │
-│  │  └────────────────────┘  │   │
-│  └──────────────────────────┘   │
-└─────────────────────────────────┘
-```
+Full observability stack running on a single AWS EC2 instance. Terraform provisions the infrastructure; Ansible installs Docker and deploys the monitoring stack via Docker Compose. Includes Telegram alerting via Alertmanager.
 
 ## Stack
 
-| Tool | Purpose |
-|------|---------|
-| Terraform | Provision AWS infrastructure (VPC, EC2, EIP, Security Groups) |
-| Ansible | Configure EC2, install Docker, deploy monitoring stack |
-| Prometheus | Metrics collection and storage |
-| Grafana | Metrics visualization and dashboards |
-| Alertmanager | Alert routing (Telegram notifications) |
-| Node Exporter | System metrics (CPU, RAM, disk) |
+```
+EC2 (t3.micro)
+  └── Docker Compose
+        ├── Prometheus      :9090  — metrics collection & storage
+        ├── Grafana         :3000  — dashboards & visualization
+        ├── Alertmanager    :9093  — alert routing → Telegram
+        └── Node Exporter   :9100  — host metrics (CPU, RAM, disk, net)
+```
 
-## Ports
+## Tech Stack
 
-| Port | Service |
-|------|---------|
-| 22 | SSH |
-| 3000 | Grafana |
-| 9090 | Prometheus |
+- **IaC:** Terraform
+- **Configuration Management:** Ansible (2 roles)
+- **Containerization:** Docker, Docker Compose
+- **Monitoring:** Prometheus, Grafana, Alertmanager, Node Exporter
+- **Alerting:** Telegram Bot
 
-## Quick Start
+## Project Structure
+
+```
+terraform/
+  modules/
+    vpc/              # VPC, public subnet, IGW, route table
+    security-groups/  # Inbound: 22, 3000 (Grafana), 9090 (Prometheus), 9093 (Alertmanager)
+    ec2/              # EC2 t3.micro, Elastic IP, key pair
+  outputs.tf          # Outputs EC2 IP → auto-writes ansible/inventory.ini
+
+ansible/
+  playbook.yml        # Applies: docker role + monitoring role
+  roles/
+    docker/           # Installs Docker + Docker Compose on EC2
+    monitoring/       # Deploys the Docker Compose stack
+  group_vars/         # Telegram bot token, chat ID
+```
+
+## Deploy
 
 **Prerequisites:** AWS credentials, Terraform, Ansible
 
 ```bash
-# 1. Provision infrastructure
+# 1. Provision EC2
 cd terraform/
 terraform init
 terraform apply
-# outputs EC2 public IP and generates ansible/inventory.ini automatically
+# inventory.ini is auto-generated in ansible/
 
-# 2. Deploy monitoring stack
+# 2. Configure and deploy monitoring
 cd ../ansible/
-ansible-playbook -i inventory.ini playbook.yml
+# Set Telegram bot token and chat ID in group_vars/
+ansible-playbook playbook.yml
 ```
 
 ## Access
 
-After deployment:
-- Grafana: `http://<ec2-ip>:3000` (admin / admin)
-- Prometheus: `http://<ec2-ip>:9090`
+| Service | URL |
+|---------|-----|
+| Grafana | `http://<EC2-IP>:3000` (admin/admin on first login) |
+| Prometheus | `http://<EC2-IP>:9090` |
+| Alertmanager | `http://<EC2-IP>:9093` |
 
-## Terraform Modules
+## Key Concepts
 
-```
-terraform/modules/
-├── vpc/              # VPC, subnet, IGW, route table
-├── security-groups/  # SSH, HTTP, Grafana, Prometheus ports
-└── ec2/              # EC2 instance, EIP, key pair
-```
-
-## Cost
-
-EC2 t3.micro ~$0.01/hour. Run `terraform destroy` when not in use.
+- **Terraform output → Ansible inventory** — no manual copy-paste of IPs between tools
+- **Two Ansible roles** — clean separation between Docker installation and monitoring config
+- **Alertmanager → Telegram** — alerts go to a Telegram channel instead of email
